@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RGRP | एडमिन पैनल</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        // 1. लॉगिन सुरक्षा
+        if (localStorage.getItem('isRgrpAdmin') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        // --- पदाधिकारियों का लॉजिक ---
+        function handleLeaderSubmit(e) {
+            e.preventDefault();
+            const name = document.getElementById('pName').value;
+            const level = document.getElementById('pLevel').value;
+            const role = document.getElementById('pRole').value;
+            const file = document.getElementById('pPhotoFile').files[0];
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const maxWidth = 400;
+                    const scale = maxWidth / img.width;
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+
+                    let leaders = JSON.parse(localStorage.getItem('rgrp_leaders')) || [];
+                    leaders.push({ id: Date.now(), name, level, role, image: compressedBase64 });
+                    localStorage.setItem('rgrp_leaders', JSON.stringify(leaders));
+                    
+                    alert("पदाधिकारी जोड़ दिया गया!");
+                    renderAllLists();
+                    e.target.reset();
+                };
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function deleteLeader(id) {
+            if(confirm("क्या आप इस व्यक्ति को लिस्ट से हटाना चाहते हैं?")) {
+                let leaders = JSON.parse(localStorage.getItem('rgrp_leaders')) || [];
+                leaders = leaders.filter(l => l.id !== id);
+                localStorage.setItem('rgrp_leaders', JSON.stringify(leaders));
+                renderAllLists();
+            }
+        }
+
+        // --- संस्था के कार्यों का लॉजिक ---
+        function handleKaryaSubmit(e) {
+            e.preventDefault();
+            const title = document.getElementById('kT').value;
+            const desc = document.getElementById('kD').value;
+            const date = document.getElementById('kDate').value;
+
+            let karyas = JSON.parse(localStorage.getItem('rgrp_karyas')) || [];
+            karyas.push({ id: Date.now(), title, desc, date });
+            localStorage.setItem('rgrp_karyas', JSON.stringify(karyas));
+            
+            alert("कार्य पब्लिश हो गया!");
+            renderAllLists();
+            e.target.reset();
+        }
+
+        function deleteKarya(id) {
+            if(confirm("क्या आप इस कार्य को लिस्ट से हटाना चाहते हैं?")) {
+                let karyas = JSON.parse(localStorage.getItem('rgrp_karyas')) || [];
+                karyas = karyas.filter(k => k.id !== id);
+                localStorage.setItem('rgrp_karyas', JSON.stringify(karyas));
+                renderAllLists();
+            }
+        }
+
+        // --- लिस्ट रेंडर करना ---
+        function renderAllLists() {
+            // पदाधिकारियों की लिस्ट
+            const leaders = JSON.parse(localStorage.getItem('rgrp_leaders')) || [];
+            const lDiv = document.getElementById('manageLeadersList');
+            lDiv.innerHTML = leaders.length ? '' : '<p class="p-6 text-center text-gray-400">कोई डेटा नहीं है</p>';
+            leaders.forEach(l => {
+                lDiv.innerHTML += `
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <div class="flex items-center gap-3">
+                            <img src="${l.image}" class="w-10 h-10 rounded-full object-cover">
+                            <div><p class="font-bold text-sm">${l.name}</p><p class="text-xs text-gray-500 uppercase">${l.role}</p></div>
+                        </div>
+                        <button onclick="deleteLeader(${l.id})" class="text-red-500 hover:scale-110 transition"><i class="fas fa-trash"></i></button>
+                    </div>`;
+            });
+
+            // कार्यों की लिस्ट
+            const karyas = JSON.parse(localStorage.getItem('rgrp_karyas')) || [];
+            const kDiv = document.getElementById('manageKaryasList');
+            kDiv.innerHTML = karyas.length ? '' : '<p class="p-6 text-center text-gray-400">कोई डेटा नहीं है</p>';
+            karyas.forEach(k => {
+                kDiv.innerHTML += `
+                    <div class="flex items-center justify-between p-4 border-b">
+                        <div><p class="font-bold text-sm">${k.title}</p><p class="text-xs text-gray-400">${k.date}</p></div>
+                        <button onclick="deleteKarya(${k.id})" class="text-red-500 hover:scale-110 transition"><i class="fas fa-trash"></i></button>
+                    </div>`;
+            });
+        }
+
+        window.onload = renderAllLists;
+    </script>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col md:flex-row">
+
+    <!-- साइडबार -->
+    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 space-y-8 sticky top-0 md:h-screen">
+        <div class="text-center">
+            <div class="w-16 h-16 bg-orange-500 rounded-full mx-auto mb-3 flex items-center justify-center shadow-lg">
+                <i class="fas fa-shield-alt text-2xl"></i>
+            </div>
+            <h1 class="font-black tracking-widest text-orange-500 uppercase text-sm">RGRP ADMIN PANEL</h1>
+        </div>
+        <nav class="space-y-4 font-bold text-sm">
+            <a href="#leaderSec" class="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition"><i class="fas fa-users"></i> पदाधिकारी</a>
+            <a href="#karyaSec" class="flex items-center gap-3 p-3 hover:bg-slate-800 rounded-xl transition"><i class="fas fa-bullhorn"></i> संस्था कार्य</a>
+            <button onclick="localStorage.removeItem('isRgrpAdmin'); window.location.href='index.html'" class="w-full mt-10 bg-red-600/20 text-red-500 border border-red-600/50 p-3 rounded-xl hover:bg-red-600 hover:text-white transition uppercase">लॉगआउट</button>
+        </nav>
+    </aside>
+
+    <!-- मेन एरिया -->
+    <main class="flex-1 p-6 md:p-12 overflow-y-auto">
+        <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10">
+            
+            <!-- 1. पदाधिकारी सेक्शन -->
+            <div id="leaderSec" class="space-y-6">
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200">
+                    <h2 class="text-xl font-black mb-6 uppercase text-slate-800 tracking-tighter">➕ नया पदाधिकारी</h2>
+                    <form onsubmit="handleLeaderSubmit(event)" class="space-y-4">
+                        <input type="text" id="pName" placeholder="नाम" class="w-full p-3 border rounded-xl outline-none focus:ring-2 ring-orange-500 bg-slate-50" required>
+                        <select id="pLevel" class="w-full p-3 border rounded-xl bg-slate-50 outline-none">
+                            <option value="national">राष्ट्रीय स्तर</option>
+                            <option value="state">प्रदेश स्तर</option>
+                            <option value="district">जिला स्तर</option>
+                        </select>
+                        <input type="text" id="pRole" placeholder="पद (जैसे: अध्यक्ष)" class="w-full p-3 border rounded-xl bg-slate-50 outline-none focus:ring-2 ring-orange-500" required>
+                        <input type="file" id="pPhotoFile" accept="image/*" class="w-full p-2 text-xs border-2 border-dashed rounded-xl cursor-pointer" required>
+                        <button class="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-black transition uppercase text-xs tracking-widest shadow-lg">पब्लिश करें</button>
+                    </form>
+                </div>
+                
+                <div class="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+                    <h3 class="p-5 font-black text-xs uppercase bg-slate-50 text-slate-500 border-b tracking-widest">⚙️ पदाधिकारी मैनेज करें</h3>
+                    <div id="manageLeadersList" class="max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- 2. कार्य मैनेजमेंट सेक्शन -->
+            <div id="karyaSec" class="space-y-6">
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200">
+                    <h2 class="text-xl font-black mb-6 uppercase text-slate-800 tracking-tighter">➕ नया कार्य जोड़ें</h2>
+                    <form onsubmit="handleKaryaSubmit(event)" class="space-y-4">
+                        <input type="text" id="kT" placeholder="कार्य का शीर्षक" class="w-full p-3 border rounded-xl outline-none focus:ring-2 ring-green-500 bg-slate-50" required>
+                        <textarea id="kD" placeholder="संक्षिप्त विवरण लिखें..." class="w-full p-3 border rounded-xl h-24 bg-slate-50 outline-none focus:ring-2 ring-green-500" required></textarea>
+                        <input type="date" id="kDate" class="w-full p-3 border rounded-xl bg-slate-50 outline-none focus:ring-2 ring-green-500" required>
+                        <button class="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition uppercase text-xs tracking-widest shadow-lg">कार्य पब्लिश करें</button>
+                    </form>
+                </div>
+
+                <div class="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden">
+                    <h3 class="p-5 font-black text-xs uppercase bg-slate-50 text-slate-500 border-b tracking-widest">⚙️ कार्यों को मैनेज करें</h3>
+                    <div id="manageKaryasList" class="max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</body>
+</html>
